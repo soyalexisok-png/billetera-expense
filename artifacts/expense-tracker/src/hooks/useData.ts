@@ -59,6 +59,59 @@ export function useData() {
     [getFilteredTransactions]
   );
 
+  const getTransactionsByDay = useCallback(
+    (year: number, month: number, day: number) => {
+      return transactions.filter((tx) => {
+        const d = new Date(tx.date);
+        return (
+          d.getFullYear() === year &&
+          d.getMonth() === month &&
+          d.getDate() === day
+        );
+      });
+    },
+    [transactions]
+  );
+
+  const getMonthDayData = useCallback(
+    (year: number, month: number) => {
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const result: Array<{
+        day: number;
+        balance: number;
+        income: number;
+        expenses: number;
+        txCount: number;
+      }> = [];
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dayTxs = transactions.filter((tx) => {
+          const txDate = new Date(tx.date);
+          return (
+            txDate.getFullYear() === year &&
+            txDate.getMonth() === month &&
+            txDate.getDate() === d
+          );
+        });
+        const income = dayTxs
+          .filter((tx) => tx.type === 'income')
+          .reduce((s, tx) => s + tx.amount, 0);
+        const expenses = dayTxs
+          .filter((tx) => tx.type === 'expense')
+          .reduce((s, tx) => s + tx.amount, 0);
+        result.push({
+          day: d,
+          balance: income - expenses,
+          income,
+          expenses,
+          txCount: dayTxs.length,
+        });
+      }
+      return result;
+    },
+    [transactions]
+  );
+
   const getExpensesByTag = useCallback(
     (year: number, month: number) => {
       const filtered = getFilteredTransactions(year, month).filter(
@@ -168,6 +221,8 @@ export function useData() {
     deleteTransaction,
     addTag,
     getFilteredTransactions,
+    getTransactionsByDay,
+    getMonthDayData,
     getTotals,
     getExpensesByTag,
     exportData,

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, ChevronLeft, ChevronRight, PieChart as PieChartIcon, List } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, PieChart as PieChartIcon, List, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/hooks/useData';
 import { TransactionModal } from '@/components/TransactionModal';
@@ -8,6 +8,7 @@ import { TransactionList } from '@/components/TransactionList';
 import { ExpenseChart } from '@/components/ExpenseChart';
 import { SummaryCards } from '@/components/SummaryCards';
 import { ImportExport } from '@/components/ImportExport';
+import { CalendarGrid } from '@/components/CalendarGrid';
 import { Transaction } from '@/types';
 
 const MONTHS = [
@@ -16,7 +17,7 @@ const MONTHS = [
 ];
 
 type ModalType = 'income' | 'expense' | null;
-type ViewTab = 'list' | 'chart';
+type ViewTab = 'list' | 'chart' | 'calendar';
 
 export default function Home() {
   const now = new Date();
@@ -25,6 +26,7 @@ export default function Home() {
   const [modalType, setModalType] = useState<ModalType>(null);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<ViewTab>('list');
 
   const {
@@ -34,6 +36,8 @@ export default function Home() {
     deleteTransaction,
     addTag,
     getFilteredTransactions,
+    getTransactionsByDay,
+    getMonthDayData,
     getTotals,
     getExpensesByTag,
     exportData,
@@ -42,21 +46,35 @@ export default function Home() {
 
   const totals = useMemo(() => getTotals(year, month), [getTotals, year, month]);
   const expensesByTag = useMemo(() => getExpensesByTag(year, month), [getExpensesByTag, year, month]);
-  const filteredTransactions = useMemo(
-    () => getFilteredTransactions(year, month, selectedTag ?? undefined),
-    [getFilteredTransactions, year, month, selectedTag]
-  );
+  const monthDayData = useMemo(() => getMonthDayData(year, month), [getMonthDayData, year, month]);
+
+  const filteredTransactions = useMemo(() => {
+    if (activeTab === 'calendar' && selectedDay !== null) {
+      return getTransactionsByDay(year, month, selectedDay);
+    }
+    return getFilteredTransactions(year, month, selectedTag ?? undefined);
+  }, [
+    activeTab,
+    selectedDay,
+    selectedTag,
+    getFilteredTransactions,
+    getTransactionsByDay,
+    year,
+    month,
+  ]);
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
     else setMonth((m) => m - 1);
     setSelectedTag(null);
+    setSelectedDay(null);
   };
 
   const nextMonth = () => {
     if (month === 11) { setMonth(0); setYear((y) => y + 1); }
     else setMonth((m) => m + 1);
     setSelectedTag(null);
+    setSelectedDay(null);
   };
 
   const openModal = (type: 'income' | 'expense') => {
@@ -83,6 +101,20 @@ export default function Home() {
     setSelectedTag(tagId);
     if (tagId) setActiveTab('list');
   };
+
+  const handleSelectDay = (day: number | null) => {
+    setSelectedDay(day);
+  };
+
+  const handleTabChange = (tab: ViewTab) => {
+    setActiveTab(tab);
+    if (tab !== 'calendar') setSelectedDay(null);
+    if (tab !== 'list') setSelectedTag(null);
+  };
+
+  const listCount = activeTab === 'calendar' && selectedDay !== null
+    ? filteredTransactions.length
+    : getFilteredTransactions(year, month).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -150,46 +182,60 @@ export default function Home() {
         </div>
 
         <div className="bg-card border border-card-border rounded-xl overflow-hidden">
-          <div className="flex border-b border-border">
+          <div className="flex border-b border-border overflow-x-auto">
             <button
               data-testid="tab-list"
-              onClick={() => setActiveTab('list')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
+              onClick={() => handleTabChange('list')}
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors whitespace-nowrap px-2 ${
                 activeTab === 'list'
                   ? 'text-foreground border-b-2 border-primary bg-muted/20'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <List className="h-4 w-4" />
+              <List className="h-4 w-4 shrink-0" />
               Transacciones
-              {filteredTransactions.length > 0 && (
+              {listCount > 0 && (
                 <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">
-                  {filteredTransactions.length}
+                  {listCount}
                 </span>
               )}
             </button>
             <button
+              data-testid="tab-calendar"
+              onClick={() => handleTabChange('calendar')}
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors whitespace-nowrap px-2 ${
+                activeTab === 'calendar'
+                  ? 'text-foreground border-b-2 border-primary bg-muted/20'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <CalendarDays className="h-4 w-4 shrink-0" />
+              Calendario
+            </button>
+            <button
               data-testid="tab-chart"
-              onClick={() => setActiveTab('chart')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
+              onClick={() => handleTabChange('chart')}
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors whitespace-nowrap px-2 ${
                 activeTab === 'chart'
                   ? 'text-foreground border-b-2 border-primary bg-muted/20'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <PieChartIcon className="h-4 w-4" />
-              Por categoría
+              <PieChartIcon className="h-4 w-4 shrink-0" />
+              Categorías
             </button>
           </div>
 
           <div className="p-4">
-            {activeTab === 'list' ? (
+            {activeTab === 'list' && (
               <>
                 {selectedTag && (
                   <div className="flex items-center justify-between mb-3 px-1">
                     <span className="text-xs text-muted-foreground">
-                      Filtrando por: <span className="text-foreground font-medium">
-                        {allTags.find((t) => t.id === selectedTag)?.emoji} {allTags.find((t) => t.id === selectedTag)?.label}
+                      Filtrando por:{' '}
+                      <span className="text-foreground font-medium">
+                        {allTags.find((t) => t.id === selectedTag)?.emoji}{' '}
+                        {allTags.find((t) => t.id === selectedTag)?.label}
                       </span>
                     </span>
                     <button
@@ -208,7 +254,36 @@ export default function Home() {
                   onDelete={deleteTransaction}
                 />
               </>
-            ) : (
+            )}
+
+            {activeTab === 'calendar' && (
+              <div className="space-y-4">
+                <CalendarGrid
+                  year={year}
+                  month={month}
+                  dayData={monthDayData}
+                  selectedDay={selectedDay}
+                  onSelectDay={handleSelectDay}
+                />
+                {selectedDay !== null && (
+                  <div>
+                    <div className="border-t border-border pt-4">
+                      <p className="text-xs font-medium text-muted-foreground mb-3 px-1 uppercase tracking-wide">
+                        Movimientos del día
+                      </p>
+                      <TransactionList
+                        transactions={filteredTransactions}
+                        tags={allTags}
+                        onEdit={handleEdit}
+                        onDelete={deleteTransaction}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'chart' && (
               <ExpenseChart
                 data={expensesByTag}
                 totalExpenses={totals.expenses}

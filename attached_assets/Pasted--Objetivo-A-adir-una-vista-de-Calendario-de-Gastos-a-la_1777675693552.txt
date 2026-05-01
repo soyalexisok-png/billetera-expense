@@ -1,0 +1,30 @@
+**Objetivo:** Añadir una vista de "Calendario de Gastos" a la aplicación existente, donde cada día del mes se represente como un bloque (grid) que refleje la intensidad de la actividad financiera.
+
+### 1. Lógica del Componente `CalendarGrid.tsx`
+- **Generación de Grilla:** El componente debe recibir el mes y año actuales. Usar `new Date(year, month, 1)` y obtener los días del mes para generar una matriz de 7 columnas (L-D).
+- **Cálculo de Intensidad:**
+    - Para cada día: sumar ingresos y restar gastos.
+    - Definir un "balance neto" por día.
+    - **Gradiente Visual:** 
+        - Neutro: `bg-slate-800` (sin actividad).
+        - Positivo (Ingreso): Escala de verdes (`bg-emerald-900` a `bg-emerald-600`).
+        - Negativo (Gasto): Escala de rojos (`bg-rose-900` a `bg-rose-600`).
+- **Interacción:** Al hacer clic en un día del Grid, el componente debe filtrar automáticamente la `TransactionList` para mostrar solo los movimientos de esa fecha específica.
+
+### 2. Estructura Visual
+- **Layout:**
+    - Header del Grid: Etiquetas de los días de la semana (L, M, X, J, V, S, D).
+    - Celdas: Contenedores cuadrados con borde `border-slate-800`.
+    - Mostrar el número del día en la esquina superior izquierda de cada celda.
+    - Si el balance del día es distinto de 0, mostrar un indicador visual pequeño (dot o barra) que represente la magnitud.
+
+### 3. Requerimientos Técnicos
+- **State Management:** Utilizar el `context` o `custom hook` existente (`useData.ts`) para inyectar las transacciones filtradas por el mes actual.
+- **Responsividad:** El grid debe adaptarse a `grid-cols-7`. En pantallas móviles, asegurar que los números no se desborden o usar un scroll horizontal si es necesario.
+- **Interoperabilidad:** Debe convivir con el `PieChart` y la `TransactionList`. Al seleccionar un día en el grid, el estado global de filtrado debe actualizarse.
+
+### 4. Instrucciones de Implementación
+1. Crear `CalendarGrid.tsx` con la lógica de generación de días del mes.
+2. Implementar una función `getDayBalance(date)` que filtre las transacciones globales y calcule el resultado neto.
+3. Añadir un botón toggle en la UI principal para alternar entre "Vista Lista" y "Vista Calendario".
+4. Asegurar que los colores (intensidad) sean dinámicos basados en el valor absoluto del balance diario
